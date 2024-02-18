@@ -1,7 +1,7 @@
 from flask import Flask, jsonify
 from scrape.index import scrape
 import re
-from werkzeug.exceptions import BadRequest
+from datetime import datetime
 
 app = Flask(__name__)
 app.json.sort_keys = False
@@ -29,7 +29,7 @@ if there is an error it returns an error message with a 500 status code
 
 @app.route('/today')
 def index():
-    data = scrape('https://www.bbc.com/sport/football/scores-fixtures')
+    data = scrape()
 
     error_message = handle_error_response(data)
 
@@ -41,16 +41,22 @@ def index():
     })
 
 
-# /mm-dd
+# /yy-mm-dd
 @app.route('/<date>')
 def date(date):
-    if not re.match(r'^\d{2}-\d{2}$', date):
+    if not re.match(r'^\d{4}-\d{2}-\d{2}$', date):
         return jsonify({
-            "error": "Invalid date format, should be mm-dd"
+            "error": "Invalid date format, should be yy-mm-dd"
         }), 400
 
-    data = scrape(
-        f'https://www.bbc.com/sport/football/scores-fixtures/2024-{date}')
+    current_date = datetime.today().strftime('%Y-%m-%d')
+
+    if date == current_date:
+        return jsonify({
+            "error": "For today's fixtures, use '/today' endpoint"
+        }), 400
+
+    data = scrape(f'/{date}')
 
     error_message = handle_error_response(data)
 
@@ -60,3 +66,7 @@ def date(date):
     return jsonify({
         "leagues": data
     })
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
