@@ -1,10 +1,27 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, make_response
 from scrape.index import scrape
 import re
 from datetime import datetime
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 app = Flask(__name__)
 app.json.sort_keys = False
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour",
+                    "20 per minute", "5 per second"],
+    storage_uri="memory://",
+)
+
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return make_response(
+        jsonify(error=f"ratelimit exceeded {e.description}"), 429
+    )
 
 
 @app.route('/')
