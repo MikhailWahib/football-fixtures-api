@@ -1,5 +1,8 @@
 import requests
+import json
+from datetime import datetime
 from bs4 import BeautifulSoup
+from redis_client import r
 
 '''
 data: [
@@ -12,7 +15,7 @@ data: [
                 home_team_score: 2,
                 away_team_score: 1,
                 match_status: 'complete',
-                start_time: '2022-08-20T20:00:00Z',
+                start_time: '14:00',
             }
         ]
     }
@@ -20,7 +23,9 @@ data: [
 '''
 
 
-def scrape(url):
+def scrape(url='/'):
+    BASE_URL = 'https://www.bbc.com/sport/football/scores-fixtures'
+
     leagues_class = 'qa-match-block'
     matches_class = 'gs-o-list-ui__item gs-u-pb-'
     team_class = 'gs-u-display-none gs-u-display-block@m qa-full-team-name sp-c-fixture__team-name-trunc'
@@ -34,7 +39,13 @@ def scrape(url):
                          'german bundesliga', 'italian serie a', 'french ligue 1']
 
     try:
-        response = requests.get(url)
+        data_date_string = url.split('/')[-1]
+
+        if r.get(data_date_string):
+            return json.loads(r.get(data_date_string))
+
+        # print(f"{BASE_URL}{url}")
+        response = requests.get(f"{BASE_URL}{url}")
         soup = BeautifulSoup(response.text, 'html.parser')
 
         data = []
@@ -108,8 +119,20 @@ def scrape(url):
                 'matches': scraped_matches
             })
 
+        if url != '/':
+            current_date = datetime.now().date()
+            data_date = datetime.strptime(data_date_string, '%Y-%m-%d').date()
+            diff = current_date - data_date
+
+            # store upcomming fixtures in redis cache for 1 day
+            if diff.days < 0:
+                r.set(data_date_string, json.dumps(data), ex=86400)
+            # store past fixtures in redis cache for 2 weeks
+            elif diff.days >= 0:
+                r.set(data_date_string, json.dumps(data), ex=1209600)
+
         return data
 
-    except:
-        print('Something went wrong while scraping the data')
+    except Exception as e:
+        print('Something went wrong while scraping the data: ', e)
         return None
