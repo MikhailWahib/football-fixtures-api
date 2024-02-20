@@ -1,6 +1,6 @@
 import requests
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from redis_client import r
 
@@ -42,9 +42,9 @@ def scrape(url='/'):
         data_date_string = url.split('/')[-1]
 
         if r.get(data_date_string):
+            print(f"Using cached data for {data_date_string}")
             return json.loads(r.get(data_date_string))
 
-        # print(f"{BASE_URL}{url}")
         response = requests.get(f"{BASE_URL}{url}")
         soup = BeautifulSoup(response.text, 'html.parser')
 
@@ -119,17 +119,30 @@ def scrape(url='/'):
                 'matches': scraped_matches
             })
 
+        # cache data if date is not today
         if url != '/':
             current_date = datetime.now().date()
             data_date = datetime.strptime(data_date_string, '%Y-%m-%d').date()
-            diff = current_date - data_date
+            diff = data_date - current_date
 
-            # store upcomming fixtures in redis cache for 1 day
             if diff.days < 0:
-                r.set(data_date_string, json.dumps(data), ex=86400)
-            # store past fixtures in redis cache for 2 weeks
-            elif diff.days >= 0:
-                r.set(data_date_string, json.dumps(data), ex=1209600)
+                two_weeks_ago_date = current_date - timedelta(days=14)
+                expiry_date = data_date - two_weeks_ago_date
+                expiry_time = expiry_date.days * 86400
+
+                r.set(data_date_string, json.dumps(
+                    data), ex=expiry_time)
+
+                print('data cached for', expiry_date.days, 'days')
+
+            elif diff.days >= 1:
+                expiry_date = data_date - current_date
+                expiry_time = expiry_date.days * 86400
+
+                r.set(data_date_string, json.dumps(
+                    data), ex=expiry_time)
+
+                print('data cached for', expiry_date.days, 'days')
 
         return data
 
