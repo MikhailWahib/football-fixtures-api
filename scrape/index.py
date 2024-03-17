@@ -2,7 +2,7 @@ import requests
 import json
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
-from redis_client import r
+from lib.cache_data import cache_data
 
 '''
 data: [
@@ -25,6 +25,7 @@ data: [
 
 def scrape(url='/'):
     BASE_URL = 'https://www.bbc.com/sport/football/scores-fixtures'
+    data_date_string = url.split('/')[-1]
 
     leagues_class = 'qa-match-block'
     matches_class = 'gs-o-list-ui__item gs-u-pb-'
@@ -36,16 +37,14 @@ def scrape(url='/'):
     not_started_date_class = 'sp-c-fixture__number sp-c-fixture__number--time'
 
     leagues_to_scrape = ['premier league', 'spanish la liga',
-                         'german bundesliga', 'italian serie a', 'french ligue 1']
+                         'german bundesliga', 'italian serie a', 'french ligue 1', 'champions league']
 
     try:
-        data_date_string = url.split('/')[-1]
-
-        if r.get(data_date_string):
-            print(f"Using cached data for {data_date_string}")
-            return json.loads(r.get(data_date_string))
-
         response = requests.get(f"{BASE_URL}{url}")
+        if response.status_code != 200:
+            print(f"Error: {response.status_code}")
+            return None
+
         soup = BeautifulSoup(response.text, 'html.parser')
 
         data = []
@@ -118,31 +117,9 @@ def scrape(url='/'):
                 'title': league_name,
                 'matches': scraped_matches
             })
-
-        # cache data if date is not today
-        if url != '/':
-            current_date = datetime.now().date()
-            data_date = datetime.strptime(data_date_string, '%Y-%m-%d').date()
-            diff = data_date - current_date
-
-            if diff.days < 0:
-                two_weeks_ago_date = current_date - timedelta(days=14)
-                expiry_date = data_date - two_weeks_ago_date
-                expiry_time = expiry_date.days * 86400
-
-                r.set(data_date_string, json.dumps(
-                    data), ex=expiry_time)
-
-                print('data cached for', expiry_date.days, 'days')
-
-            elif diff.days >= 1:
-                expiry_date = data_date - current_date
-                expiry_time = expiry_date.days * 86400
-
-                r.set(data_date_string, json.dumps(
-                    data), ex=expiry_time)
-
-                print('data cached for', expiry_date.days, 'days')
+            # cache data if date is not today
+            if url != '/':
+                cache_data(data, data_date_string)
 
         return data
 

@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from lib.get_cached_data import get_cached_data
 
 app = Flask(__name__)
 app.json.sort_keys = False
@@ -31,13 +32,6 @@ def hello():
     })
 
 
-def handle_error_response(data):
-    if data is None:
-        return jsonify({
-            "error": "Something went wrong"
-        }), 500
-
-
 '''
 if no data it returns an empty list
 if there is an error it returns an error message with a 500 status code
@@ -48,10 +42,10 @@ if there is an error it returns an error message with a 500 status code
 def index():
     data = scrape()
 
-    error_message = handle_error_response(data)
-
-    if error_message:
-        return error_message
+    if data is None:
+        return jsonify({
+            "error": "No data found"
+        })
 
     return jsonify({
         "leagues": data
@@ -73,12 +67,19 @@ def date(date):
             "error": "For today's fixtures, use '/today' endpoint"
         }), 400
 
-    data = scrape(f'/{date}')
+    cached_data = get_cached_data(date, date)
 
-    error_message = handle_error_response(data)
+    if cached_data:
+        return jsonify({
+            "leagues": cached_data
+        })
 
-    if error_message:
-        return error_message
+    data = scrape(f"/{date}")
+
+    if data is None:
+        return jsonify({
+            "error": "No data found"
+        })
 
     return jsonify({
         "leagues": data
