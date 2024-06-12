@@ -1,10 +1,9 @@
 from flask import Flask, jsonify, make_response
-from scrape.index import scrape
+from lib import scrape, get_cached_data
 import re
 from datetime import datetime
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from lib.get_cached_data import get_cached_data
 
 app = Flask(__name__)
 app.json.sort_keys = False
@@ -40,6 +39,14 @@ if there is an error it returns an error message with a 500 status code
 
 @app.route('/today')
 def index():
+    data = get_cached_data('today')
+
+    if data:
+        return jsonify({
+            "leagues": data
+        })
+    
+
     data = scrape()
 
     if data is None:
@@ -67,11 +74,11 @@ def date(date):
             "error": "For today's fixtures, use '/today' endpoint"
         }), 400
 
-    cached_data = get_cached_data(date, date)
+    data = get_cached_data(date, date)
 
-    if cached_data:
+    if data:
         return jsonify({
-            "leagues": cached_data
+            "leagues": data
         })
 
     data = scrape(f"/{date}")

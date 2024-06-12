@@ -1,8 +1,6 @@
 import requests
-import json
-from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
-from lib.cache_data import cache_data
+from .cache_data import cache_data
 
 '''
 data: [
@@ -24,20 +22,22 @@ data: [
 
 
 def scrape(url='/'):
+    print("Scaping.........")
     BASE_URL = 'https://www.bbc.com/sport/football/scores-fixtures'
     data_date_string = url.split('/')[-1]
 
-    leagues_class = 'qa-match-block'
-    matches_class = 'gs-o-list-ui__item gs-u-pb-'
-    team_class = 'gs-u-display-none gs-u-display-block@m qa-full-team-name sp-c-fixture__team-name-trunc'
-    home_team_score_class = 'sp-c-fixture__number sp-c-fixture__number--home'
-    away_team_score_class = 'sp-c-fixture__number sp-c-fixture__number--away'
-    live_score_class = 'sp-c-fixture__number--live-sport'
-    finished_score_class = 'sp-c-fixture__number--ft'
-    not_started_date_class = 'sp-c-fixture__number sp-c-fixture__number--time'
+    leagues_class = 'ssrcss-1jkg1a7-HeaderWrapper e4zdov50' #div
+    matches_class = 'ssrcss-1bjtunb-GridContainer e1efi6g55' #div
+    team_name_class = 'ssrcss-1p14tic-DesktopValue emlpoi30' #span
+    home_team_score_class = 'ssrcss-qsbptj-HomeScore e56kr2l2' #div
+    away_team_score_class = 'ssrcss-fri5a2-AwayScore e56kr2l1' #div
+    # TODO: Update live score class
+    live_score_class = 'sp-c-fixture__number--live-sport' #div
+    ft_div_class = 'ssrcss-1uqnn64-StyledPeriod e307mhr0' #div
+    time_element_class = 'ssrcss-uizd8o-StyledTime eli9aj90' #time
 
-    leagues_to_scrape = ['premier league', 'spanish la liga',
-                         'german bundesliga', 'italian serie a', 'french ligue 1', 'champions league']
+    leagues_to_scrape = set(['premier league', 'spanish la liga',
+                         'german bundesliga', 'italian serie a', 'french ligue 1', 'champions league', 'internationals'])
 
     try:
         response = requests.get(f"{BASE_URL}{url}")
@@ -55,47 +55,55 @@ def scrape(url='/'):
             return []
 
         for league in leagues:
-            league_name = league.find('h3').text
+            league_name = league.find('h2')
+            if league_name:
+                league_name = league.find('h2').text
+            else:
+                league_name = ''
 
             if league_name.lower() not in leagues_to_scrape:
                 continue
 
             scraped_matches = []
 
-            matches = league.find_all('li', {'class': matches_class})
+            matches = league.find_all('div', {'class': matches_class})
 
             for match in matches:
                 home_team = match.find_all(
-                    'span', {'class': team_class})[0].text
+                    'span', {'class': team_name_class})[0].text
                 away_team = match.find_all(
-                    'span', {'class': team_class})[1].text
+                    'span', {'class': team_name_class})[1].text
                 home_team_score = None
                 away_team_score = None
                 match_status = None
                 start_time = None
+            
 
-                # check if match is live
+
+                # TODO: check if match is live
                 if match.find('span', {'class': f"{home_team_score_class} {live_score_class}"}):
-                    home_team_score = match.find(
-                        'span', {'class': f"{home_team_score_class} {live_score_class}"}).text
-                    away_team_score = match.find(
-                        'span', {'class': f"{away_team_score_class} {live_score_class}"}).text
+                    # home_team_score = match.find(
+                    #     'span', {'class': f"{home_team_score_class} {live_score_class}"}).text
+                    # away_team_score = match.find(
+                    #     'span', {'class': f"{away_team_score_class} {live_score_class}"}).text
                     match_status = 'playing'
 
                 # check if match is not started
-                elif match.find('span', {'class': not_started_date_class}):
+                # if the time element exisits, that means that the match hasn't started yet
+                elif match.find('span', {'class': time_element_class}):
                     home_team_score = None
                     away_team_score = None
                     match_status = 'not_started'
                     start_time = match.find(
-                        'span', {'class': not_started_date_class}).text
+                        'time', {'class': time_element_class}).text
 
                 # check if match is finished
-                elif match.find('span', {'class': f"{home_team_score_class} {finished_score_class}"}):
+                # if the match div has the FT div, that means that the match has ended.
+                elif match.find('div', {'class': {ft_div_class}}):
                     home_team_score = match.find(
-                        'span', {'class': f"{home_team_score_class} {finished_score_class}"}).text
+                        'div', {'class': {home_team_score_class}}).text
                     away_team_score = match.find(
-                        'span', {'class': f"{away_team_score_class} {finished_score_class}"}).text
+                        'div', {'class': {away_team_score_class}}).text
                     match_status = 'finished'
 
                 scraped_matches.append({
@@ -117,9 +125,8 @@ def scrape(url='/'):
                 'title': league_name,
                 'matches': scraped_matches
             })
-            # cache data if date is not today
-            if url != '/':
-                cache_data(data, data_date_string)
+            # cache data
+            cache_data(data, data_date_string or 'today')
 
         return data
 
