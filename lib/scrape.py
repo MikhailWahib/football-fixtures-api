@@ -31,13 +31,11 @@ def scrape(url='/'):
     team_name_class = 'ssrcss-1p14tic-DesktopValue emlpoi30' #span
     home_team_score_class = 'ssrcss-qsbptj-HomeScore e56kr2l2' #div
     away_team_score_class = 'ssrcss-fri5a2-AwayScore e56kr2l1' #div
-    # TODO: Update live score class
-    live_score_class = 'sp-c-fixture__number--live-sport' #div
     ft_div_class = 'ssrcss-1uqnn64-StyledPeriod e307mhr0' #div
     time_element_class = 'ssrcss-uizd8o-StyledTime eli9aj90' #time
 
     leagues_to_scrape = set(['premier league', 'spanish la liga',
-                         'german bundesliga', 'italian serie a', 'french ligue 1', 'champions league', 'internationals'])
+                         'german bundesliga', 'italian serie a', 'french ligue 1', 'champions league', 'internationals', 'uefa euro 2024'])
 
     try:
         response = requests.get(f"{BASE_URL}{url}")
@@ -77,20 +75,10 @@ def scrape(url='/'):
                 away_team_score = None
                 match_status = None
                 start_time = None
-            
-
-
-                # TODO: check if match is live
-                if match.find('span', {'class': f"{home_team_score_class} {live_score_class}"}):
-                    # home_team_score = match.find(
-                    #     'span', {'class': f"{home_team_score_class} {live_score_class}"}).text
-                    # away_team_score = match.find(
-                    #     'span', {'class': f"{away_team_score_class} {live_score_class}"}).text
-                    match_status = 'playing'
 
                 # check if match is not started
                 # if the time element exisits, that means that the match hasn't started yet
-                elif match.find('span', {'class': time_element_class}):
+                if match.find('time', {'class': time_element_class}):
                     home_team_score = None
                     away_team_score = None
                     match_status = 'not_started'
@@ -105,6 +93,11 @@ def scrape(url='/'):
                     away_team_score = match.find(
                         'div', {'class': {away_team_score_class}}).text
                     match_status = 'finished'
+
+                # Match is live
+                else:
+                    match_status = 'playing'
+
 
                 scraped_matches.append({
                     'home_team': home_team,
