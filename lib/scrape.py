@@ -32,10 +32,10 @@ def scrape(url='/'):
     home_team_score_class = 'ssrcss-qsbptj-HomeScore e56kr2l2' #div
     away_team_score_class = 'ssrcss-fri5a2-AwayScore e56kr2l1' #div
     ft_div_class = 'ssrcss-1uqnn64-StyledPeriod e307mhr0' #div
-    time_element_class = 'ssrcss-uizd8o-StyledTime eli9aj90' #time
+    time_div_class = 'ssrcss-etkxi3-StyledCentre ejsemf30' #div
 
-    leagues_to_scrape = set(['premier league', 'spanish la liga',
-                         'german bundesliga', 'italian serie a', 'french ligue 1', 'champions league', 'internationals', 'uefa euro 2024'])
+    leagues_to_scrape = ['premier league', 'spanish la liga',
+                         'german bundesliga', 'italian serie a', 'french ligue 1', 'champions league', 'internationals', 'uefa euro 2024']
 
     try:
         response = requests.get(f"{BASE_URL}{url}")
@@ -78,12 +78,12 @@ def scrape(url='/'):
 
                 # check if match is not started
                 # if the time element exisits, that means that the match hasn't started yet
-                if match.find('time', {'class': time_element_class}):
+                if match.find('div', {'class': time_div_class}):
                     home_team_score = None
                     away_team_score = None
                     match_status = 'not_started'
                     start_time = match.find(
-                        'time', {'class': time_element_class}).text
+                        'div', {'class': time_div_class}).text
 
                 # check if match is finished
                 # if the match div has the FT div, that means that the match has ended.
@@ -112,7 +112,7 @@ def scrape(url='/'):
 
                 # add start time if match is not started
                 if start_time is not None:
-                    scraped_matches[-1]['start_time'] = start_time
+                    scraped_matches[-1]['start_time'] = start_time[:5]
 
             data.append({
                 'title': league_name,
