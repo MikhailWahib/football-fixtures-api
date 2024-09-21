@@ -31,8 +31,8 @@ def scrape(url='/', league_to_get=None):
     team_name_class = 'ssrcss-1p14tic-DesktopValue emlpoi30' #span
     home_team_score_class = 'ssrcss-qsbptj-HomeScore e56kr2l2' #div
     away_team_score_class = 'ssrcss-fri5a2-AwayScore e56kr2l1' #div
-    ft_div_class = 'ssrcss-1uqnn64-StyledPeriod e307mhr0' #div
-    time_div_class = 'ssrcss-etkxi3-StyledCentre ejsemf30' #div
+    ft_div_class = 'ssrcss-1uqnn64-StyledPeriod e307mhr0' #div.text**
+    time_element_class = 'ssrcss-10tlwly-StyledTime eli9aj90' #time
 
     leagues_to_scrape = ['english premier league', 'spanish la liga',
                          'german bundesliga', 'italian serie a', 'french ligue 1', 'champions league', 'internationals']
@@ -92,16 +92,16 @@ def scrape(url='/', league_to_get=None):
 
                 # check if match is not started
                 # if the time element exisits, that means that the match hasn't started yet
-                if match.find('div', {'class': time_div_class}):
+                if match.find('time', {'class': time_element_class}):
                     home_team_score = None
                     away_team_score = None
                     match_status = 'not_started'
                     start_time = match.find(
-                        'div', {'class': time_div_class}).text
+                        'time', {'class': time_element_class}).text
 
                 # check if match is finished
                 # if the match div has the FT div, that means that the match has ended.
-                elif match.find('div', {'class': {ft_div_class}}):
+                elif match.find('div', {'class': {ft_div_class}}).text == 'FT':
                     home_team_score = match.find(
                         'div', {'class': {home_team_score_class}}).text
                     away_team_score = match.find(
