@@ -1,8 +1,8 @@
-# Football Fixtures API
+# Football Scores API
 
 ## Description
 
-This API provides access to the Top-5-leagues football fixtures.
+This API provides data about upcoming and finished football matches.
 The data is scraped from [BBC Sport](https://www.bbc.com/sport/football/scores-fixtures) using [Python](https://www.python.org/) and [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/).
 
 The API uses Redis for caching results, It caches todays results for 30 seconds and the rest for 30 days.
