@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, make_response
+from flask import Flask, jsonify, make_response, request
 from lib import scrape, get_cached_data
 import re
 from datetime import datetime
@@ -39,7 +39,9 @@ if there is an error it returns an error message with a 500 status code
 
 @app.route('/today')
 def index():
-    data = get_cached_data('today')
+    league = request.args.get('league')
+    data_cache_key = f"today?league={league}" if league else "today"
+    data = get_cached_data(data_cache_key)
 
     if data:
         return jsonify({
@@ -47,7 +49,7 @@ def index():
         })
     
 
-    data = scrape()
+    data = scrape("/", league)
 
     if data is None:
         return jsonify({
@@ -74,14 +76,16 @@ def date(date):
             "error": "For today's fixtures, use '/today' endpoint"
         }), 400
 
-    data = get_cached_data(date, date)
+    league = request.args.get('league')
+    data_cache_key = f"{date}?league={league}" if league else date
+    data = get_cached_data(data_cache_key)
 
     if data:
         return jsonify({
             "leagues": data
         })
 
-    data = scrape(f"/{date}")
+    data = scrape(f"/{date}", league)
 
     if data is None:
         return jsonify({

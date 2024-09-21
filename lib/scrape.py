@@ -5,7 +5,7 @@ from .cache_data import cache_data
 '''
 data: [
     {
-        title: 'premier league',
+        league: 'premier league',
         matches: [
             {
                 home_team: 'arsenal',
@@ -21,7 +21,7 @@ data: [
 '''
 
 
-def scrape(url='/'):
+def scrape(url='/', league_to_get=None):
     print("Scaping.........")
     BASE_URL = 'https://www.bbc.com/sport/football/scores-fixtures'
     data_date_string = url.split('/')[-1]
@@ -34,8 +34,19 @@ def scrape(url='/'):
     ft_div_class = 'ssrcss-1uqnn64-StyledPeriod e307mhr0' #div
     time_div_class = 'ssrcss-etkxi3-StyledCentre ejsemf30' #div
 
-    leagues_to_scrape = ['premier league', 'spanish la liga',
-                         'german bundesliga', 'italian serie a', 'french ligue 1', 'champions league', 'internationals', 'uefa euro 2024']
+    leagues_to_scrape = ['english premier league', 'spanish la liga',
+                         'german bundesliga', 'italian serie a', 'french ligue 1', 'champions league', 'internationals']
+
+    supported_leagues_map = {
+        'pl': 'english premier league',
+        'sl': 'spanish la liga',
+        'gl': 'german bundesliga',
+        'sa': 'italian serie a',
+        'fl': 'french ligue 1',
+        'cl': 'champions league',
+        'in': 'internationals'
+    }
+    
 
     try:
         response = requests.get(f"{BASE_URL}{url}")
@@ -52,19 +63,22 @@ def scrape(url='/'):
         if not leagues:
             return []
 
-        for league in leagues:
-            league_name = league.find('h2')
+        for l in leagues:
+            league_name = l.find('h2')
             if league_name:
-                league_name = league.find('h2').text
+                league_name = l.find('h2').text
             else:
                 league_name = ''
 
-            if league_name.lower() not in leagues_to_scrape:
-                continue
+            # Check if league is in the list of leagues to scrape 
+            # and if user provided a league to get, check if it matches, to get the desired league
+            if ((league_name.lower() not in leagues_to_scrape) or
+                (league_to_get != None and league_name.lower() != supported_leagues_map[league_to_get].lower())):
+                    continue
 
             scraped_matches = []
 
-            matches = league.find_all('div', {'class': matches_class})
+            matches = l.find_all('div', {'class': matches_class})
 
             for match in matches:
                 home_team = match.find_all(
@@ -115,11 +129,15 @@ def scrape(url='/'):
                     scraped_matches[-1]['start_time'] = start_time[:5]
 
             data.append({
-                'title': league_name,
+                'league': league_name,
                 'matches': scraped_matches
             })
-            # cache data
-            cache_data(data, data_date_string or 'today')
+
+        # cache data
+        data_cache_key = "today" if url == None else data_date_string
+        if league_to_get != None:
+            data_cache_key += f"?league={league_to_get}"
+        cache_data(data, data_cache_key)
 
         return data
 
