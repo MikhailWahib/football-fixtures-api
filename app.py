@@ -1,9 +1,11 @@
 from flask import Flask, jsonify, make_response, request
 from lib import scrape, get_cached_data
 import re
+import json
 from datetime import datetime
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_swagger_ui import get_swaggerui_blueprint
 
 app = Flask(__name__)
 app.json.sort_keys = False
@@ -95,6 +97,28 @@ def date(date):
     return jsonify({
         "leagues": data
     })
+
+# Swagger UI configuration
+SWAGGER_URL = '/docs'  # URL for exposing Swagger UI (without trailing '/')
+API_URL = '/static/swagger.json'  # Our API url (can of course be a local resource)
+
+# Call factory function to create our blueprint
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,  # Swagger UI static files will be mapped to '{SWAGGER_URL}/dist/'
+    API_URL,
+    config={  # Swagger UI config overrides
+        'app_name': "Football Scores API"
+    }
+)
+
+# Register blueprint at URL
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+
+# Route to serve the Swagger JSON file
+@app.route("/static/swagger.json")
+def serve_swagger_json():
+    with open('swagger.json', 'r') as f:
+        return jsonify(json.load(f))
 
 
 if __name__ == '__main__':

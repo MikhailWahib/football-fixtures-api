@@ -1,0 +1,183 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Football Scores API",
+    "description": "This API provides data about upcoming and finished football matches.\nThe data is scraped from [BBC Sport](https://www.bbc.com/sport/football/scores-fixtures) using Python and Beautiful Soup.\nThe API uses Redis for caching results. It caches today's results for 30 seconds and the rest for 30 days.\n",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000"
+    }
+  ],
+  "paths": {
+    "/today": {
+      "get": {
+        "summary": "Get today's football matches",
+        "description": "Retrieve information about today's football matches",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "league",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pl",
+                "sl",
+                "gl",
+                "sa",
+                "fl",
+                "cl",
+                "in"
+              ]
+            },
+            "description": "Filter matches by league (optional)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/{date}": {
+      "get": {
+        "summary": "Get football matches for a specific date",
+        "description": "Retrieve information about football matches for a given date",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Date in YYYY-MM-DD format"
+          },
+          {
+            "in": "query",
+            "name": "league",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pl",
+                "sl",
+                "gl",
+                "sa",
+                "fl",
+                "cl",
+                "in"
+              ]
+            },
+            "description": "Filter matches by league (optional)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "404": {
+            "description": "No matches found for the given date"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "MatchesResponse": {
+        "type": "object",
+        "properties": {
+          "leagues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/League"
+            }
+          }
+        }
+      },
+      "League": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Premier League"
+          },
+          "matches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Match"
+            }
+          }
+        }
+      },
+      "Match": {
+        "type": "object",
+        "properties": {
+          "home_team": {
+            "type": "string",
+            "example": "Manchester United"
+          },
+          "away_team": {
+            "type": "string",
+            "example": "Manchester City"
+          },
+          "match_status": {
+            "type": "string",
+            "enum": [
+              "finished",
+              "playing",
+              "upcoming"
+            ]
+          },
+          "home_team_score": {
+            "type": "string",
+            "example": "3"
+          },
+          "away_team_score": {
+            "type": "string",
+            "example": "0"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Matches",
+      "description": "Football match data"
+    }
+  ],
+  "externalDocs": {
+    "description": "API Source Code",
+    "url": "https://github.com/yourusername/football-scores-api"
+  }
+}
